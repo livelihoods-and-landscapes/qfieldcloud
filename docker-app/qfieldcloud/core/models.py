@@ -425,7 +425,7 @@ class UserAccount(models.Model):
             return None
 
     def __str__(self):
-        return self.TYPE_CHOICES[self.account_type][1]
+        return self.get_account_type_display()
 
 
 class Geodb(models.Model):
@@ -909,6 +909,7 @@ class Project(models.Model):
         return self.name + " (" + str(self.id) + ")" + " owner: " + self.owner.username
 
     def storage_size(self):
+        """Retrieves the storage size from S3"""
         return utils.get_s3_project_size(self.id)
 
     @property
@@ -960,7 +961,7 @@ class Project(models.Model):
             and self.data_last_packaged_at
         ):
             # if all vector layers are file based and have been packaged after the last update, it is safe to say there are no modifications
-            return self.data_last_packaged_at > self.data_last_updated_at
+            return self.data_last_packaged_at < self.data_last_updated_at
         else:
             # if the project has online vector layers (PostGIS/WFS/etc) we cannot be sure if there are modification or not, so better say there are
             return True
