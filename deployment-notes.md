@@ -94,6 +94,13 @@ sudo update-ca-certificates
 ./scripts/init_letsencrypt.sh
 ```
 
+## Logs directory
+Create the directory for qfieldcloud logs and supervisor socket file
+
+```
+mkdir /var/local/qfieldcloud
+```
+
 ## Create Fake Project
 
 Using the django admin console, create an empyty init project which will allow creating cloud projects from within QGIS. 
