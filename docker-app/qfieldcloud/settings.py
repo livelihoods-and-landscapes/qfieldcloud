@@ -91,7 +91,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_currentuser.middleware.ThreadLocalUserMiddleware",
     "auditlog.middleware.AuditlogMiddleware",
-    "qfieldcloud.core.middleware.request_response_log.RequestResponseLogMiddleware",
     "qfieldcloud.core.middleware.timezone.TimezoneMiddleware",
     "axes.middleware.AxesMiddleware",
 ]
@@ -281,21 +280,15 @@ INVITATIONS_INVITATION_ONLY = True
 INVITATIONS_ACCEPT_INVITE_AFTER_SIGNUP = True
 INVITATIONS_GONE_ON_ACCEPT_ERROR = False
 
+TEST_RUNNER = "qfieldcloud.testing.QfcTestSuiteRunner"
+
 LOGLEVEL = os.environ.get("LOGLEVEL", "DEBUG").upper()
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": True,
     "formatters": {
-        "request.human": {
-            "()": "qfieldcloud.core.logging.formatters.CustomisedRequestHumanFormatter",
-        },
         "json": {
             "()": "qfieldcloud.core.logging.formatters.CustomisedJSONFormatter",
-        },
-    },
-    "filters": {
-        "skip_logging": {
-            "()": "qfieldcloud.core.logging.filters.SkipLoggingFilter",
         },
     },
     "handlers": {
@@ -303,28 +296,10 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "formatter": "json",
         },
-        "console.human": {
-            "class": "logging.StreamHandler",
-            "formatter": "request.human",
-        },
     },
     "root": {
         "handlers": ["console.json"],
         "level": "INFO",
-    },
-    "loggers": {
-        "qfieldcloud.request_response_log": {
-            "level": LOGLEVEL,
-            "filters": [
-                "skip_logging",
-            ],
-            "handlers": [
-                # TODO enable console.json once it is clear how we do store the json logs
-                # 'console.json',
-                "console.human",
-            ],
-            "propagate": False,
-        },
     },
 }
 
