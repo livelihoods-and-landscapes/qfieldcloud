@@ -191,7 +191,6 @@ STORAGE_SECRET_ACCESS_KEY = os.environ.get("STORAGE_SECRET_ACCESS_KEY")
 STORAGE_BUCKET_NAME = os.environ.get("STORAGE_BUCKET_NAME")
 STORAGE_REGION_NAME = os.environ.get("STORAGE_REGION_NAME")
 STORAGE_ENDPOINT_URL = os.environ.get("STORAGE_ENDPOINT_URL")
-STORAGE_ENDPOINT_URL_EXTERNAL = os.environ.get("STORAGE_ENDPOINT_URL_EXTERNAL")
 
 AUTH_USER_MODEL = "core.User"
 
@@ -285,7 +284,7 @@ TEST_RUNNER = "qfieldcloud.testing.QfcTestSuiteRunner"
 LOGLEVEL = os.environ.get("LOGLEVEL", "DEBUG").upper()
 LOGGING = {
     "version": 1,
-    "disable_existing_loggers": True,
+    "disable_existing_loggers": False,
     "formatters": {
         "json": {
             "()": "qfieldcloud.core.logging.formatters.CustomisedJSONFormatter",
@@ -305,6 +304,9 @@ LOGGING = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
+# Whether we are currently running tests
+# NOTE automatically set when running tests, don't change manually!
+IN_TEST_SUITE = False
 
 QFIELDCLOUD_TOKEN_SERIALIZER = "qfieldcloud.core.serializers.TokenSerializer"
 QFIELDCLOUD_USER_SERIALIZER = "qfieldcloud.core.serializers.CompleteUserSerializer"

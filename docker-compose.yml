@@ -40,7 +40,6 @@ services:
       STORAGE_BUCKET_NAME: ${STORAGE_BUCKET_NAME}
       STORAGE_REGION_NAME: ${STORAGE_REGION_NAME}
       STORAGE_ENDPOINT_URL: ${STORAGE_ENDPOINT_URL}
-      STORAGE_ENDPOINT_URL_EXTERNAL: ${STORAGE_ENDPOINT_URL}
       QFIELDCLOUD_DEFAULT_NETWORK: ${QFIELDCLOUD_DEFAULT_NETWORK}
       SENTRY_DSN: ${SENTRY_DSN}
       SENTRY_SERVER_NAME: ${QFIELDCLOUD_HOST}
@@ -86,6 +85,7 @@ services:
     volumes:
       - static_volume:/var/www/html/staticfiles/
       - media_volume:/var/www/html/mediafiles/
+      - ./conf/nginx/pages/:/var/www/html/pages/
       - ./conf/nginx/templates/:/etc/nginx/templates/
       - ./conf/nginx/certs/:/etc/nginx/certs/:ro
       - ./conf/nginx/options-ssl-nginx.conf:/etc/nginx/options-ssl-nginx.conf
