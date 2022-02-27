@@ -114,8 +114,9 @@ def _download_project_directory(project_id: str, download_dir: Path = None) -> P
         absolute_filename = download_dir.joinpath(relative_filename)
         absolute_filename.parent.mkdir(parents=True, exist_ok=True)
 
+        # NOTE the E_TAG already is surrounded by double quotes
         logging.info(
-            f'Downloading file "{obj.key}", size: {obj.size} bytes, md5sum: "{obj.e_tag}" '
+            f'Downloading file "{obj.key}", size: {obj.size} bytes, md5sum: {obj.e_tag} '
         )
 
         bucket.download_file(obj.key, str(absolute_filename))
@@ -135,8 +136,12 @@ def _upload_project_directory(
     prefix = "/".join(["projects", project_id, subdir])
 
     if should_delete:
+        logging.info("Deleting older file versions...")
+
         # Remove existing package directory on the storage
         bucket.objects.filter(Prefix=prefix).delete()
+
+    uploaded_files_count = 0
 
     # Loop recursively in the local package directory
     for elem in Path(local_dir).rglob("*.*"):
@@ -170,10 +175,16 @@ def _upload_project_directory(
         # Check if the file is different on the storage
         # TODO switch to etag/md5sum comparison
         if metadata["sha256sum"] != storage_metadata["sha256sum"]:
+            uploaded_files_count += 1
             logging.info(
                 f'Uploading file "{key}", size: {elem.stat().st_size} bytes, md5sum: {md5sum}, sha256sum: "{sha256sum}" '
             )
             bucket.upload_file(str(elem), key, ExtraArgs={"Metadata": metadata})
+
+    if uploaded_files_count == 0:
+        logging.info("No files need to be uploaded.")
+    else:
+        logging.info(f"{uploaded_files_count} file(s) uploaded.")
 
 
 def _call_qfieldsync_packager(project_filename: Path, package_dir: Path) -> str:

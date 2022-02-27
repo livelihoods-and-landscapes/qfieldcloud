@@ -99,6 +99,7 @@ CRON_CLASSES = [
     "qfieldcloud.notifs.cron.SendNotificationsJob",
     # "qfieldcloud.core.cron.DeleteExpiredInvitationsJob",
     "qfieldcloud.core.cron.ResendFailedInvitationsJob",
+    "qfieldcloud.core.cron.SetTerminatedWorkersToFinalStatusJob",
 ]
 
 ROOT_URLCONF = "qfieldcloud.urls"
@@ -275,7 +276,7 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
 # Django invitations configurations
 # https://github.com/bee-keeper/django-invitations#additional-configuration
 INVITATIONS_INVITATION_EXPIRY = 365  # integer in days, 0 disables invitations
-INVITATIONS_INVITATION_ONLY = True
+INVITATIONS_INVITATION_ONLY = False
 INVITATIONS_ACCEPT_INVITE_AFTER_SIGNUP = True
 INVITATIONS_GONE_ON_ACCEPT_ERROR = False
 
@@ -310,3 +311,5 @@ IN_TEST_SUITE = False
 
 QFIELDCLOUD_TOKEN_SERIALIZER = "qfieldcloud.core.serializers.TokenSerializer"
 QFIELDCLOUD_USER_SERIALIZER = "qfieldcloud.core.serializers.CompleteUserSerializer"
+
+WORKER_TIMEOUT_S = int(os.environ.get("QFIELDCLOUD_WORKER_TIMEOUT_S", 60))
