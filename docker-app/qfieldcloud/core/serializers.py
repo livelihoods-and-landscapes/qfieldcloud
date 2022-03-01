@@ -26,8 +26,9 @@ User = get_user_model()
 def get_avatar_url(user: User) -> Optional[str]:
     if hasattr(user, "useraccount") and user.useraccount.avatar_url:
         site = Site.objects.get_current()
-        port = os.environ.get("WEB_HTTP_PORT")
-        return f"http://{site.domain}:{port}{user.useraccount.avatar_url}"
+        port = os.environ.get("WEB_HTTPS_PORT")
+        port = f":{port}" if port != "443" else ""
+        return f"https://{site.domain}{port}{user.useraccount.avatar_url}"
     return None
 
 
@@ -187,12 +188,12 @@ class OrganizationMemberSerializer(serializers.ModelSerializer):
 
 
 class TokenSerializer(serializers.ModelSerializer):
-    username = serializers.StringRelatedField(source="user")
+    username = serializers.CharField(source="user.username")
     expires_at = serializers.DateTimeField()
-    user_type = serializers.StringRelatedField(source="user")
-    first_name = serializers.StringRelatedField(source="user")
-    last_name = serializers.StringRelatedField(source="user")
-    full_name = serializers.StringRelatedField(source="user")
+    user_type = serializers.CharField(source="user.user_type")
+    first_name = serializers.CharField(source="user.first_name")
+    last_name = serializers.CharField(source="user.last_name")
+    full_name = serializers.CharField(source="user.full_name")
     token = serializers.CharField(source="key")
     email = serializers.SerializerMethodField()
     avatar_url = serializers.SerializerMethodField()
