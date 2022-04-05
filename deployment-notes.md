@@ -52,6 +52,11 @@ If making changes, use to avoid using cached images:
 
 ```
 docker-compose up -d --build --force-recreate
+
+# or for debugging
+
+docker-compose up --build --force-recreate
+
 ```
 
 Run django database migrations.
