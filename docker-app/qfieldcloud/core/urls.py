@@ -9,7 +9,7 @@ from qfieldcloud.core.views import (
     projects_views,
     qfield_files_views,
     status_views,
-    users_views,
+    users_views
 )
 from rest_framework.routers import DefaultRouter
 

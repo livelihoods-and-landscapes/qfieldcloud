@@ -241,6 +241,7 @@ ACCOUNT_AUTHENTICATION_METHOD = "username_email"
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
+LOGIN_REDIRECT_URL = "/landing/"
 
 # Choose one of "mandatory", "optional", or "none".
 # For local development and test use "optional" or "none"
@@ -271,7 +272,6 @@ EMAIL_PORT = os.environ.get("EMAIL_PORT")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
-
 
 # Django invitations configurations
 # https://github.com/bee-keeper/django-invitations#additional-configuration

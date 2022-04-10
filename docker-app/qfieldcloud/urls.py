@@ -63,5 +63,6 @@ urlpatterns = [
     path("api/v1/", include("qfieldcloud.core.urls")),
     path("auth/", include("rest_framework.urls")),
     path("accounts/", include("allauth.urls")),
+    path("landing/", auth_views.Landing.as_view()),
     re_path(r"^invitations/", include("invitations.urls", namespace="invitations")),
 ]

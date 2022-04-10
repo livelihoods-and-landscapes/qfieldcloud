@@ -11,6 +11,7 @@ from rest_framework.generics import RetrieveAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.views.generic import TemplateView
 
 from .authentication import create_token
 from .models import AuthToken
@@ -119,3 +120,7 @@ class UserView(RetrieveAPIView):
         https://github.com/Tivix/django-rest-auth/issues/275
         """
         return get_user_model().objects.none()
+
+
+class Landing(TemplateView):
+    template_name = 'landing.html'

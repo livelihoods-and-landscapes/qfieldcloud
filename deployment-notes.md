@@ -109,3 +109,57 @@ mkdir /var/local/qfieldcloud
 ## Create Fake Project
 
 Using the django admin console, create an empyty init project which will allow creating cloud projects from within QGIS. 
+
+# Email invites and user signup
+
+If using gmail as a smtp server, set the following environment variables. 
+
+```
+ACCOUNT_EMAIL_VERIFICATION=optional
+EMAIL_HOST=smtp.gmail.com
+EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
+EMAIL_PORT=587
+EMAIL_HOST_USER=<email>
+EMAIL_HOST_PASSWORD=<password>
+DEFAULT_FROM_EMAIL=<email>
+```
+
+### Configure a default landing page
+
+This is what is shown to users after completing a signup or when logged in.
+
+Create a `landing.html` in the `qfieldcloud/core/templates` directory:
+
+```
+touch landing.html
+```
+
+In `qfieldcloud/authentication/views.py` add the following:
+
+```
+from django.views.generic import TemplateView
+
+# other code here
+
+class Landing(TemplateView):
+    template_name = 'landing.html'
+```
+
+Add `landing.html` to the urls in `qfieldcloud/urls.py`
+
+```
+path("auth/", include("rest_framework.urls")),
+path("accounts/", include("allauth.urls")),
+path("landing/", auth_views.Landing.as_view()), ### THIS IS THE PATH TO ADD ###
+re_path(r"^invitations/", include("invitations.urls", namespace="invitations")),
+```
+
+Finally, in `qfieldcloud/settings.py` add:
+
+```
+LOGIN_REDIRECT_URL = "/landing/"
+``` 
+
+This will redirect this user to `landing.html` after signup or successful login. 
+
