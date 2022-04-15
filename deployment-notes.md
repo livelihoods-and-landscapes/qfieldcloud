@@ -163,3 +163,6 @@ LOGIN_REDIRECT_URL = "/landing/"
 
 This will redirect this user to `landing.html` after signup or successful login. 
 
+# Override base.html
+
+To override the html templates from django all-auth, `qfieldcloud/core/templates/account` - adapt the `base.html` template. Here, we add bootstrap5. 

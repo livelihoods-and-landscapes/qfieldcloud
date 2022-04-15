@@ -14,9 +14,10 @@
 </head>
 
 <body>
-    {% block body %}
+    <div class="container">
+        {% block body %}
 
-    {% if messages %}
+        <!-- {% if messages %}
     <div>
         <strong>Messages:</strong>
         <ul>
@@ -25,11 +26,11 @@
             {% endfor %}
         </ul>
     </div>
-    {% endif %}
+    {% endif %} -->
 
-    <div>
-        <h1>QFieldCloud Admin</h1>
-        <!-- <strong>Menu:</strong>
+        <div>
+            <h1>QFieldCloud Admin</h1>
+            <!-- <strong>Menu:</strong>
         <ul>
             {% if user.is_authenticated %}
             <li><a href="{% url 'account_email' %}">Change E-mail</a></li>
@@ -39,12 +40,13 @@
             <li><a href="{% url 'account_signup' %}">Sign Up</a></li>
             {% endif %}
         </ul> -->
+        </div>
+        {% block content %}
+        {% endblock %}
+        {% endblock %}
+        {% block extra_body %}
+        {% endblock %}
     </div>
-    {% block content %}
-    {% endblock %}
-    {% endblock %}
-    {% block extra_body %}
-    {% endblock %}
 </body>
 
 </html>
