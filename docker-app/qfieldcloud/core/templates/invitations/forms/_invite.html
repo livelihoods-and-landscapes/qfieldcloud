@@ -8,16 +8,15 @@
 </head>
 
 <body>
-    <div class="continer">
+    <div class="container">
         <h4 class="title">Invite</h4>
-        <span class="alert alert-info">Please add an email below. The user will receive an email with
-            instructions.</span>
+        <p>Please add an email below. The user will receive an email with instructions.</p>
 
         <form id="invite-form" method="POST" action="{% url 'invitations:send-invite' %}">
             {% csrf_token %}
             <div class="form-group">
                 <input type="text" name="email" id="id_email" value="{{ form.email.value }}"
-                    class="form-control validate-email" placeholder="{% trans 'Email' %}">
+                    class="form-control validate-email" placeholder="Email">
             </div>
             <div class="form-group">
                 {% for error in form.email.errors %}
