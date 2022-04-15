@@ -125,7 +125,7 @@ EMAIL_HOST_PASSWORD=<password>
 DEFAULT_FROM_EMAIL=<email>
 ```
 
-### Configure a default landing page
+# Configure a default landing page
 
 This is what is shown to users after completing a signup or when logged in.
 
@@ -166,3 +166,11 @@ This will redirect this user to `landing.html` after signup or successful login.
 # Override base.html
 
 To override the html templates from django all-auth, `qfieldcloud/core/templates/account` - adapt the `base.html` template. Here, we add bootstrap5. 
+
+# Override invite user form
+
+To override the invite users form, create an `invitations/forms` directory inside templates. Then create an `_invite.html` file from [here](https://github.com/jazzband/django-invitations). Configure the `_invite.html` file as required. 
+
+# Edit User model
+
+In the file `qfieldcloud/docker-app/qfieldcloud/core/models.py` - under the `UserAccount` class change the number of allowed synchronisations per month and db limit sizes. Under the `User` class increase the number of invitations per month.  
