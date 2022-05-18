@@ -315,7 +315,7 @@ class User(AbstractUser):
     )
 
     remaining_invitations = models.PositiveIntegerField(
-        default=3,
+        default=1000000,
         help_text=_("Remaining invitations that can be sent by the user himself."),
     )
 
@@ -404,7 +404,7 @@ class UserAccount(models.Model):
 
     # These will be moved one day to extrapackage. We don't touch for now (they are only used
     # in some tests)
-    db_limit_mb = models.PositiveIntegerField(default=25)
+    db_limit_mb = models.PositiveIntegerField(default=1000)
     is_geodb_enabled = models.BooleanField(
         default=False,
         help_text=_("Whether the account has the option to create a GeoDB."),

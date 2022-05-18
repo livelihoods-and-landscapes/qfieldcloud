@@ -30,7 +30,7 @@ class Migration(migrations.Migration):
                 ),
                 ("code", models.CharField(max_length=30, unique=True)),
                 ("display_name", models.CharField(max_length=100)),
-                ("storage_mb", models.PositiveIntegerField(default=10)),
+                ("storage_mb", models.PositiveIntegerField(default=1000)),
                 ("storage_keep_versions", models.PositiveIntegerField(default=10)),
                 ("job_minutes", models.PositiveIntegerField(default=10)),
                 ("can_add_storage", models.BooleanField(default=False)),
@@ -54,7 +54,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "synchronizations_per_months",
-                    models.PositiveIntegerField(default=30),
+                    models.PositiveIntegerField(default=1000000),
                 ),
                 ("is_public", models.BooleanField(default=False)),
                 ("is_default", models.BooleanField(default=False)),

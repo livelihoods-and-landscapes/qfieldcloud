@@ -12,16 +12,16 @@ def populate_account_types(apps, schema_editor):
         id=1,  # DO NOT CHANGE! Must match legacy UserAccount.TYPE_COMMUNITY
         code="community",
         display_name="community",
-        storage_mb=100,
+        storage_mb=1000,
         storage_keep_versions=3,
-        job_minutes=30,
+        job_minutes=1000,
         can_add_storage=False,
         can_add_job_minutes=False,
         is_external_db_supported=False,
         has_priority_support=False,
         can_configure_repackaging_cache_expire=False,
         min_repackaging_cache_expire=timedelta(minutes=60),
-        synchronizations_per_months=30,
+        synchronizations_per_months=1000000,
         is_public=True,
         is_default=True,
     )
@@ -33,14 +33,14 @@ def populate_account_types(apps, schema_editor):
         display_name="pro",
         storage_mb=1000,
         storage_keep_versions=10,
-        job_minutes=100,
+        job_minutes=1000,
         can_add_storage=False,
         can_add_job_minutes=False,
         is_external_db_supported=False,
         has_priority_support=False,
         can_configure_repackaging_cache_expire=True,
         min_repackaging_cache_expire=timedelta(minutes=1),
-        synchronizations_per_months=30,
+        synchronizations_per_months=1000000,
         is_public=True,
         is_default=False,
     )
@@ -50,16 +50,16 @@ def populate_account_types(apps, schema_editor):
         id=3,
         code="organization",
         display_name="organization",
-        storage_mb=100,  # we probably mean 1000 ?
+        storage_mb=1000,  # we probably mean 1000 ?
         storage_keep_versions=10,
-        job_minutes=100,  # TODO: QF-234 says per should be per user !
+        job_minutes=1000,  # TODO: QF-234 says per should be per user !
         can_add_storage=False,
         can_add_job_minutes=False,
         is_external_db_supported=False,
         has_priority_support=False,
         can_configure_repackaging_cache_expire=True,
         min_repackaging_cache_expire=timedelta(minutes=1),
-        synchronizations_per_months=30,
+        synchronizations_per_months=1000000,
         is_public=True,
         is_default=False,
     )
