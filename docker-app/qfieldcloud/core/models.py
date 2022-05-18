@@ -2,26 +2,29 @@ import os
 import secrets
 import string
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta
 from enum import Enum
-from typing import Iterable, List
+from typing import List
 
 import django_cryptography.fields
 import qfieldcloud.core.utils2.storage
 from auditlog.registry import auditlog
+from deprecated import deprecated
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.gis.db import models
 from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator
-from django.db.models import Case, Exists, OuterRef, Q
+from django.core.validators import MinValueValidator, RegexValidator
+from django.db.models import Case, Exists, F, OuterRef, Q
 from django.db.models import Value as V
 from django.db.models import When
-from django.db.models.aggregates import Count
+from django.db.models.aggregates import Count, Sum
 from django.db.models.fields.json import JSONField
 from django.urls import reverse_lazy
+from django.utils.functional import cached_property
 from django.utils.translation import gettext as _
 from model_utils.managers import InheritanceManager
 from qfieldcloud.core import geodb_utils, utils, validators
+from qfieldcloud.subscription.models import AccountType
 from timezone_field import TimeZoneField
 
 # http://springmeblog.com/2018/how-to-implement-multiple-user-types-with-django/
@@ -47,6 +50,10 @@ class UserQueryset(models.QuerySet):
     """
 
     def for_project(self, project: "Project"):
+
+        # This is a list of tuples defining project memberships
+        # List[(Condition, Role, RoleOrigin)]
+
         permissions_config = [
             # Project owner
             (
@@ -78,10 +85,12 @@ class UserQueryset(models.QuerySet):
             # Role through ProjectCollaborator
             (
                 Exists(
-                    ProjectCollaborator.objects.filter(
+                    ProjectCollaborator.objects.validated()
+                    .filter(
                         project=project,
                         collaborator=OuterRef("pk"),
-                    ).exclude(
+                    )
+                    .exclude(
                         collaborator__user_type=User.TYPE_TEAM,
                     )
                 ),
@@ -371,13 +380,6 @@ class User(AbstractUser):
 
 
 class UserAccount(models.Model):
-    TYPE_COMMUNITY = 1
-    TYPE_PRO = 2
-
-    TYPE_CHOICES = (
-        (TYPE_COMMUNITY, "community"),
-        (TYPE_PRO, "pro"),
-    )
 
     NOTIFS_IMMEDIATELY = timedelta(minutes=0)
     NOTIFS_HOURLY = timedelta(hours=1)
@@ -393,16 +395,21 @@ class UserAccount(models.Model):
     )
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
-    account_type = models.PositiveSmallIntegerField(
-        choices=TYPE_CHOICES, default=TYPE_COMMUNITY
+
+    account_type = models.ForeignKey(
+        "subscription.AccountType",
+        on_delete=models.PROTECT,
+        default=AccountType.get_or_create_default,
     )
-    storage_limit_mb = models.PositiveIntegerField(default=100)
+
+    # These will be moved one day to extrapackage. We don't touch for now (they are only used
+    # in some tests)
     db_limit_mb = models.PositiveIntegerField(default=25)
     is_geodb_enabled = models.BooleanField(
         default=False,
         help_text=_("Whether the account has the option to create a GeoDB."),
     )
-    synchronizations_per_months = models.PositiveIntegerField(default=30)
+
     bio = models.CharField(max_length=255, default="", blank=True)
     company = models.CharField(max_length=255, default="", blank=True)
     location = models.CharField(max_length=255, default="", blank=True)
@@ -429,8 +436,30 @@ class UserAccount(models.Model):
         else:
             return None
 
+    @property
+    def storage_quota_left_mb(self) -> float:
+        """Returns the storage quota left in MB (quota from account and extrapackages minus storage of all owned projects)"""
+
+        base_quota = self.account_type.storage_mb
+
+        extra_quota = (
+            self.extra_packages.filter(
+                Q(start_date__lte=datetime.now())
+                & (Q(end_date__isnull=True) | Q(end_date__gte=datetime.now()))
+            ).aggregate(sum_mb=Sum("type__extrapackagetypestorage__megabytes"))[
+                "sum_mb"
+            ]
+            or 0
+        )
+
+        used_quota = (
+            self.user.projects.aggregate(sum_mb=Sum("storage_size_mb"))["sum_mb"] or 0
+        )
+
+        return base_quota + extra_quota - used_quota
+
     def __str__(self):
-        return self.get_account_type_display()
+        return f"Account {self.account_type}"
 
 
 class Geodb(models.Model):
@@ -757,7 +786,7 @@ class ProjectQueryset(models.QuerySet):
             # Role through ProjectCollaborator
             (
                 Exists(
-                    ProjectCollaborator.objects.filter(
+                    ProjectCollaborator.objects.validated().filter(
                         project=OuterRef("pk"),
                         collaborator=user,
                     )
@@ -821,7 +850,6 @@ class Project(models.Model):
         FAILED = "failed", _("Failed")
 
     objects = ProjectQueryset.as_manager()
-    _cache_files_count = None
 
     class Meta:
         ordering = ["owner__username", "name"]
@@ -868,9 +896,26 @@ class Project(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # These cache stats of the S3 storage. These can be out of sync, and should be
+    # refreshed whenever retrieving/uploading files by passing `project.save(recompute_storage=True)`
+    storage_size_mb = models.FloatField(default=0)
+
     # NOTE we can track only the file based layers, WFS, WMS, PostGIS etc are impossible to track
     data_last_updated_at = models.DateTimeField(blank=True, null=True)
     data_last_packaged_at = models.DateTimeField(blank=True, null=True)
+
+    last_package_job = models.ForeignKey(
+        "PackageJob",
+        on_delete=models.SET_NULL,
+        related_name="last_job_of",
+        null=True,
+        blank=True,
+    )
+
+    repackaging_cache_expire = models.DurationField(
+        default=timedelta(minutes=60),
+        validators=[MinValueValidator(timedelta(minutes=1))],
+    )
 
     overwrite_conflicts = models.BooleanField(
         default=True,
@@ -901,10 +946,6 @@ class Project(models.Model):
     def __str__(self):
         return self.name + " (" + str(self.id) + ")" + " owner: " + self.owner.username
 
-    def storage_size(self):
-        """Retrieves the storage size from S3"""
-        return utils.get_s3_project_size(self.id)
-
     @property
     def staticfile_dirs(self) -> List[str]:
         """Returns a list of configured staticfile dirs for the project.
@@ -933,16 +974,15 @@ class Project(models.Model):
         # still used in the project serializer
         return not self.is_public
 
-    @property
-    def files(self) -> Iterable[utils.S3ObjectWithVersions]:
-        return utils.get_project_files_with_versions(self.id)
+    @cached_property
+    def files(self) -> List[utils.S3ObjectWithVersions]:
+        """Gets all the files from S3 storage. This is potentially slow. Results are cached on the instance."""
+        return list(utils.get_project_files_with_versions(self.id))
 
     @property
+    @deprecated("Use `len(project.files)` instead")
     def files_count(self):
-        if self._cache_files_count is None:
-            self._cache_files_count = utils.get_project_files_count(self.id)
-
-        return self._cache_files_count
+        return len(self.files)
 
     @property
     def users(self):
@@ -1008,6 +1048,41 @@ class Project(models.Model):
             qfieldcloud.core.utils2.storage.remove_project_thumbail(self)
         super().delete(*args, **kwargs)
 
+    def save(self, recompute_storage=False, *args, **kwargs):
+        if recompute_storage:
+            self.storage_size_mb = utils.get_s3_project_size(self.id)
+        super().save(*args, **kwargs)
+
+
+class ProjectCollaboratorQueryset(models.QuerySet):
+    def validated(self, keep_invalid=False):
+        """Annotates the queryset with `is_valid` and by default filters out all invalid memberships.
+
+        A membership to a private project not owned by an organization, or owned by a organization
+        that the member is not part of is invalid.
+
+        Args:
+            keep_invalid:   if true, invalid rows are kept"""
+
+        # Build the conditions with Q objects
+        public = Q(project__is_public=True)
+        owned_by_org = Q(project__owner__user_type=User.TYPE_ORGANIZATION)
+        user_also_member_of_org = Q(
+            project__owner__organization__members__member=F("collaborator")
+        )
+
+        # Assemble the condition
+        condition = public | (owned_by_org & user_also_member_of_org)
+
+        # Annotate the queryset
+        qs = self.annotate(is_valid=Case(When(condition, then=True), default=False))
+
+        # Filter out invalid
+        if not keep_invalid:
+            qs = qs.exclude(is_valid=False)
+
+        return qs
+
 
 class ProjectCollaborator(models.Model):
     class Roles(models.TextChoices):
@@ -1024,6 +1099,8 @@ class ProjectCollaborator(models.Model):
                 name="projectcollaborator_project_collaborator_uniq",
             )
         ]
+
+    objects = ProjectCollaboratorQueryset.as_manager()
 
     project = models.ForeignKey(
         Project,
@@ -1114,6 +1191,11 @@ class Delta(models.Model):
     old_geom = models.GeometryField(null=True, srid=4326, dim=4)
     new_geom = models.GeometryField(null=True, srid=4326, dim=4)
 
+    jobs_to_apply = models.ManyToManyField(
+        to="ApplyJob",
+        through="ApplyJobDelta",
+    )
+
     def __str__(self):
         return str(self.id) + ", project: " + str(self.project.id)
 
@@ -1181,8 +1263,39 @@ class Job(models.Model):
     finished_at = models.DateTimeField(blank=True, null=True, editable=False)
 
     @property
-    def short_id(self):
+    def short_id(self) -> str:
         return str(self.id)[0:8]
+
+    @property
+    def fallback_output(self) -> str:
+        # show whatever is the output if it is present
+        if self.output:
+            return ""
+
+        if self.status == Job.Status.PENDING:
+            return _(
+                "The job is in pending status, it will be started as soon as there are available server resources."
+            )
+        elif self.status == Job.Status.QUEUED:
+            return _(
+                "The job is in queued status. Server resources are allocated and it will be started soon."
+            )
+        elif self.status == Job.Status.STARTED:
+            return _("The job is in started status. Waiting for it to finish...")
+        elif self.status == Job.Status.FINISHED:
+            return _(
+                "The job is in finished status. It finished successfully without any output."
+            )
+        elif self.status == Job.Status.STOPPED:
+            return _("The job is in stopped status. Waiting to be continued...")
+        elif self.status == Job.Status.FAILED:
+            return _(
+                "The job is in failed status. The execution failed due to server error. Please verify the project is configured properly and try again."
+            )
+        else:
+            return _(
+                "The job ended in unknown state. Please verify the project is configured properly, try again and contact QFieldCloud support for more information."
+            )
 
 
 class PackageJob(Job):
@@ -1247,18 +1360,17 @@ class Secret(models.Model):
 
     name = models.TextField(
         max_length=255,
-        unique=True,
         validators=[
             RegexValidator(
                 r"^[A-Z]+[A-Z0-9_]+$",
                 _(
-                    "Must start with a letter and followed by capital letters, numbers or underscores."
+                    "Must start with a capital letter and followed by capital letters, numbers or underscores."
                 ),
             )
         ],
         help_text=_(
             _(
-                "Must start with a letter and followed by capital letters, numbers or underscores."
+                "Must start with a capital letter and followed by capital letters, numbers or underscores."
             ),
         ),
     )
@@ -1271,6 +1383,14 @@ class Secret(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     value = django_cryptography.fields.encrypt(models.TextField())
+
+    class Meta:
+        ordering = ["project", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "name"], name="secret_project_name_uniq"
+            )
+        ]
 
 
 auditlog.register(User, exclude_fields=["last_login", "updated_at"])

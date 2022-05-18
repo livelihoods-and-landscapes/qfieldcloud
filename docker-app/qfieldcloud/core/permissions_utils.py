@@ -336,7 +336,6 @@ def can_create_secrets(user: QfcUser, project: Project) -> bool:
         project,
         [
             ProjectCollaborator.Roles.ADMIN,
-            ProjectCollaborator.Roles.MANAGER,
         ],
     )
 
@@ -347,7 +346,6 @@ def can_delete_secrets(user: QfcUser, project: Project) -> bool:
         project,
         [
             ProjectCollaborator.Roles.ADMIN,
-            ProjectCollaborator.Roles.MANAGER,
         ],
     )
 
@@ -475,6 +473,20 @@ def can_delete_members(user: QfcUser, organization: Organization) -> bool:
 def can_become_collaborator(user: QfcUser, project: Project) -> bool:
     if project.collaborators.filter(collaborator=user).count() > 0:
         return False
+
+    # Rules for private projects
+    if project.private:
+        # Only organisations can have members
+        if project.owner.user_type != QfcUser.TYPE_ORGANIZATION:
+            return False
+
+        # And only members of these organisations can join
+        if not user_has_organization_roles(
+            user,
+            project.owner,
+            [OrganizationMember.Roles.MEMBER, OrganizationMember.Roles.ADMIN],
+        ):
+            return False
 
     return not user_has_project_role_origins(
         user,

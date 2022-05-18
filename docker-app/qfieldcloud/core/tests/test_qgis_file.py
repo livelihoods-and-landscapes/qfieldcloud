@@ -8,13 +8,8 @@ from django.core.management import call_command
 from django.http import FileResponse
 from qfieldcloud.authentication.models import AuthToken
 from qfieldcloud.core import utils
-from qfieldcloud.core.models import (
-    Job,
-    ProcessProjectfileJob,
-    Project,
-    User,
-    UserAccount,
-)
+from qfieldcloud.core.models import Job, ProcessProjectfileJob, Project, User
+from qfieldcloud.subscription.models import AccountType
 from rest_framework import status
 from rest_framework.test import APITransactionTestCase
 
@@ -517,14 +512,18 @@ class QfcTestCase(APITransactionTestCase):
 
         self.client.credentials(HTTP_AUTHORIZATION="Token " + self.token1.key)
 
+        acctype_3 = AccountType.objects.create(storage_keep_versions=3, code="acc3")
+        self.user1.useraccount.account_type = acctype_3
+        self.user1.useraccount.save()
+
         def count_versions():
             """counts the versions in first file of project1"""
-            file = list(self.project1.files)[0]
+            file = Project.objects.get(pk=self.project1.pk).files[0]
             return len(file.versions)
 
         def read_version(n):
             """returns the content of version in first file of project1"""
-            file = list(self.project1.files)[0]
+            file = Project.objects.get(pk=self.project1.pk).files[0]
             return file.versions[n]._data.get()["Body"].read().decode()
 
         # Create 20 versions (direct upload to s3)
@@ -536,8 +535,8 @@ class QfcTestCase(APITransactionTestCase):
 
         # Ensure it worked
         self.assertEqual(count_versions(), 20)
-        self.assertEqual(read_version(0), "v19")
-        self.assertEqual(read_version(19), "v0")
+        self.assertEqual(read_version(0), "v0")
+        self.assertEqual(read_version(19), "v19")
 
         # Run management command on other project should have no effect
         other = Project.objects.create(name="other", owner=self.user1)
@@ -547,14 +546,14 @@ class QfcTestCase(APITransactionTestCase):
         # Run management command should leave 3
         call_command("purge_old_file_versions", "--force")
         self.assertEqual(count_versions(), 3)
-        self.assertEqual(read_version(0), "v19")
-        self.assertEqual(read_version(2), "v17")
+        self.assertEqual(read_version(0), "v17")
+        self.assertEqual(read_version(2), "v19")
 
         # Run management command is idempotent
         call_command("purge_old_file_versions", "--force")
         self.assertEqual(count_versions(), 3)
-        self.assertEqual(read_version(0), "v19")
-        self.assertEqual(read_version(2), "v17")
+        self.assertEqual(read_version(0), "v17")
+        self.assertEqual(read_version(2), "v19")
 
     def test_purge_old_versions(self):
         """This tests automated purging of old versions when uploading files"""
@@ -565,26 +564,28 @@ class QfcTestCase(APITransactionTestCase):
 
         def count_versions():
             """counts the versions in first file of project1"""
-            file = list(self.project1.files)[0]
+            file = Project.objects.get(pk=self.project1.pk).files[0]
             return len(file.versions)
 
         def read_version(n):
             """returns the content of version in first file of project1"""
-            file = list(self.project1.files)[0]
+            file = Project.objects.get(pk=self.project1.pk).files[0]
             return file.versions[n]._data.get()["Body"].read().decode()
 
         # As PRO account, 10 version should be kept out of 20
-        self.user1.useraccount.account_type = UserAccount.TYPE_PRO
+        acctype_10 = AccountType.objects.create(storage_keep_versions=10, code="acc10")
+        self.user1.useraccount.account_type = acctype_10
         self.user1.useraccount.save()
         for i in range(20):
             test_file = io.StringIO(f"v{i}")
             self.client.post(apipath, {"file": test_file}, format="multipart")
         self.assertEqual(count_versions(), 10)
-        self.assertEqual(read_version(0), "v19")
-        self.assertEqual(read_version(9), "v10")
+        self.assertEqual(read_version(0), "v10")
+        self.assertEqual(read_version(9), "v19")
 
         # As COMMUNITY account, 3 version should be kept
-        self.user1.useraccount.account_type = UserAccount.TYPE_COMMUNITY
+        acctype_3 = AccountType.objects.create(storage_keep_versions=3, code="acc3")
+        self.user1.useraccount.account_type = acctype_3
         self.user1.useraccount.save()
 
         # But first we check that uploading to another project doesn't affect a projct
@@ -592,18 +593,16 @@ class QfcTestCase(APITransactionTestCase):
         otherpath = f"/api/v1/files/{otherproj.id}/file.txt/"
         self.client.post(otherpath, {"file": io.StringIO("v1")}, format="multipart")
         self.assertEqual(count_versions(), 10)
-        self.assertEqual(read_version(0), "v19")
-        self.assertEqual(read_version(9), "v10")
+        self.assertEqual(read_version(0), "v10")
+        self.assertEqual(read_version(9), "v19")
 
         # As COMMUNITY account, 3 version should be kept out of 20 new ones
-        self.user1.useraccount.account_type = UserAccount.TYPE_COMMUNITY
-        self.user1.useraccount.save()
         for i in range(20, 40):
             test_file = io.StringIO(f"v{i}")
             self.client.post(apipath, {"file": test_file}, format="multipart")
         self.assertEqual(count_versions(), 3)
-        self.assertEqual(read_version(0), "v39")
-        self.assertEqual(read_version(2), "v37")
+        self.assertEqual(read_version(0), "v37")
+        self.assertEqual(read_version(2), "v39")
 
     def test_multiple_file_uploads_one_process_job(self):
         self.client.credentials(HTTP_AUTHORIZATION="Token " + self.token1.key)
