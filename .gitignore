@@ -7,3 +7,6 @@ __pycache__/
 .env
 docker-compose.override.yml
 client/projects
+
+docker-app/qfieldcloud/core/templates/.DS_Store
+.DS_Store

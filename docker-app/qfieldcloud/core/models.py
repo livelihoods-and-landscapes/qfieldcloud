@@ -306,7 +306,7 @@ class User(AbstractUser):
     )
 
     remaining_invitations = models.PositiveIntegerField(
-        default=3,
+        default=1000000,
         help_text=_("Remaining invitations that can be sent by the user himself."),
     )
 
@@ -392,13 +392,13 @@ class UserAccount(models.Model):
     account_type = models.PositiveSmallIntegerField(
         choices=TYPE_CHOICES, default=TYPE_COMMUNITY
     )
-    storage_limit_mb = models.PositiveIntegerField(default=100)
-    db_limit_mb = models.PositiveIntegerField(default=25)
+    storage_limit_mb = models.PositiveIntegerField(default=1000)
+    db_limit_mb = models.PositiveIntegerField(default=1000)
     is_geodb_enabled = models.BooleanField(
         default=False,
         help_text=_("Whether the account has the option to create a GeoDB."),
     )
-    synchronizations_per_months = models.PositiveIntegerField(default=30)
+    synchronizations_per_months = models.PositiveIntegerField(default=1000000)
     bio = models.CharField(max_length=255, default="", blank=True)
     company = models.CharField(max_length=255, default="", blank=True)
     location = models.CharField(max_length=255, default="", blank=True)

@@ -16,6 +16,8 @@ from .authentication import create_token
 from .models import AuthToken
 from .utils import load_module
 
+from django.views.generic import TemplateView
+
 LoginSerializer = load_module(settings.QFIELDCLOUD_LOGIN_SERIALIZER)
 TokenSerializer = load_module(settings.QFIELDCLOUD_TOKEN_SERIALIZER)
 UserSerializer = load_module(settings.QFIELDCLOUD_USER_SERIALIZER)
@@ -119,3 +121,7 @@ class UserView(RetrieveAPIView):
         https://github.com/Tivix/django-rest-auth/issues/275
         """
         return get_user_model().objects.none()
+
+
+class Landing(TemplateView):
+    template_name = 'landing.html'

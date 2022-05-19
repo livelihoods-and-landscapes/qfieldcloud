@@ -238,6 +238,7 @@ ACCOUNT_AUTHENTICATION_METHOD = "username_email"
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
+LOGIN_REDIRECT_URL = "/landing/"
 
 # Choose one of "mandatory", "optional", or "none".
 # For local development and test use "optional" or "none"
